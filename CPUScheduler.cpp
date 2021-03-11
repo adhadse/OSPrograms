@@ -4,6 +4,8 @@
 
 #include <iostream>
 #include <vector>
+#include <deque>
+#include <algorithm>
 
 using namespace std;
 
@@ -29,6 +31,7 @@ class Process {
             this->processId = proccesId;
             this->arrivalTime = arrivalTime;
             this->burstTime = burstTime;
+            this->remainingBurstTime = burstTime;
             this->priority = priority;
         }
 
@@ -280,6 +283,155 @@ class ShortestRemainingTimeFirst: public Scheduler {
 
 };
 
+//Inherits from Scheduler Class
+class RoundRobin: public Scheduler {
+    int const quantum;
+    deque<Process*> readyQueue;
+    Process* executedProcess;
+    // bool alreadyInExecutedProcess(Process* arrivedprocess) {
+    //     if (std::find(executedProcess.begin(), executedProcess.end(), arrivedprocess ) != executedProcess.end()) {
+    //         return true;
+    //     }
+    //     return false;
+    // }
+    bool alreadyInReadyQueue(Process* arrivedprocess) {
+        if (std::find(readyQueue.begin(), readyQueue.end(), arrivedprocess ) != readyQueue.end()) {
+            return true;
+        }
+        return false;
+    }
+    public:
+        RoundRobin(int clock, vector<Process> processList, int quantum=2) 
+            : Scheduler(clock, processList),
+              quantum(quantum) {}
+        Process* nextSuitableProcess() override {
+            try {
+                vector<Process*> arrivedprocesses = arrivedProcesses();
+                
+                for (auto process: arrivedprocesses) {
+                    if(alreadyInReadyQueue(process)){
+                        // Don't Do anything 
+                    } else {
+                        this->readyQueue.push_back(process);
+                    }
+                }
+
+                readyQueue.push_back(this->executedProcess);
+                return this->readyQueue.front();
+            }
+            catch (string std) {
+                //If no arrived Processes;
+                cout<<std<<"\n";
+                throw string("No Suitable (Round Robin) Process Found!\n"); 
+            }
+        }
+        void execute() override {
+            // This function execute the process one 
+            // by one by calling nextSuitableProcess()
+            while (true) {
+                try {
+                    Process* process = nextSuitableProcess();
+                    cout<<"Executing ProcessID "<< (*process).processId<<"\n";
+
+                    // Set the clock to arrival of late arrived process arrival time i.e. CPU was sitting idle.
+                    if (this->clock < process->arrivalTime) {this->clock = process->arrivalTime;}
+                    if(process->remainingBurstTime < quantum ) {
+                        clock += process->remainingBurstTime;
+                        process->remainingBurstTime = 0;
+                    } else {
+                        clock += quantum;
+                        process->remainingBurstTime -= quantum;
+                    }
+                    
+                    if (process->remainingBurstTime == 0) {
+                        process->completionTime = clock;
+                        process->setTurnAroundTime();
+                        process->setWaitingTime();
+                        process->completed=true;
+                        this->readyQueue.pop_front();
+                        continue;
+                    }   else {
+                            this->executedProcess = process;
+                        this->readyQueue.pop_front();
+                    }
+                }
+                catch (string std) {
+                    // If no suitable processes
+                    cout<<std;
+                    return;
+                } 
+            }
+        }
+
+};
+
+// Inherits From Scheduler Class
+class PriorityWithPreEmption: public Scheduler {
+    public:
+        PriorityWithPreEmption(int clock, vector<Process> processList) : Scheduler(clock, processList) {}
+
+        Process* nextSuitableProcess() override {
+            try{
+                auto process = highestPriority( arrivedProcesses() );
+                return process;
+            }
+            catch (string std) {
+                //If NO arrived Processes;
+                cout<<std<<"\n";
+                throw string("No Suitable (Priority) Process Found!\n");
+            }
+        }
+
+        void execute() override {
+            // This function execute the process one 
+            // by one by calling nextSuitableProcess()
+            while (true) {
+                try {
+                    Process* process = nextSuitableProcess();
+                    cout<<"Executing ProcessID "<< (*process).processId<<"\n";
+
+                    // Set the clock to arrival of late arrived process arrival time i.e. CPU was sitting idle.
+                    if (clock < process->arrivalTime) {clock = process->arrivalTime;}
+                    clock += 1;
+                    process->remainingBurstTime -= 1;
+                    if (process->remainingBurstTime == 0) {
+                        process->completionTime = clock;
+                        process->setTurnAroundTime();
+                        process->setWaitingTime();
+                        process->completed=true;
+                        continue;
+                    }   
+                }
+                catch (string std) {
+                    // If no suitable processes
+                    cout<<std;
+                    return;
+                } 
+            }
+        }
+        
+        void showSchedule() override {
+            // Prints the scheduling time and priority of process
+            cout<<"Process_id Priority Arrival_Time Burst_Time Completion_Time Turn_Around_Time Waiting_Time\n";
+            float avgTurnAroundTime = 0.0f;
+            float avgWaitingTime = 0.0f;
+            for (auto & process : processList) {
+                cout<<process.processId
+                    <<"          "<<process.priority
+                    <<"        "<<process.arrivalTime
+                    <<"            "<<process.burstTime
+                    <<"          "<<process.completionTime
+                    <<"                "<<process.turnAroundTime
+                    <<"                "<<process.waitingTime<<"\n";
+            avgTurnAroundTime += process.turnAroundTime;
+            avgWaitingTime += process.waitingTime;
+            }
+            cout<<"---------------------\nAverage Turn Around Time "<<avgTurnAroundTime/processList.size()<<"\n";
+            cout<<"Average Waiting Time "<<avgWaitingTime/processList.size()<<"\n";
+        }    
+};
+
+
 void priorityWithNonPreEmption() {
     vector<Process> processList = {
         Process(1,0,4,2),
@@ -319,7 +471,39 @@ void shortestRemainingTime() {
     srtf.execute();
     srtf.showSchedule();
 }
+void roundRobin() {
+    vector<Process> processList = {
+        Process(1,0,5),
+        Process(2,1,4),
+        Process(3,2,2),
+        Process(4,4,1)
+    };
+    vector<Process> processList2 = {
+        Process(1, 1,   4),
+        Process(2, 1, 	5),
+        Process(3, 2, 	2),
+        Process(4, 3, 	1),
+        Process(5, 4,	6),
+        Process(6, 6,	3),
+        
+    };
+    RoundRobin rr(0, processList2);
+    rr.execute();
+    rr.showSchedule();
+}
+
+void priorityWithPreEmption(){
+    vector<Process> processList = {
+        Process(1,0,5,10),
+        Process(2,1,4,20),
+        Process(3,2,2,30),
+        Process(4,4,1,40)
+    };
+    PriorityWithPreEmption pwp(0, processList);
+    pwp.execute();
+    pwp.showSchedule();
+}
 int main() {
-    shortestRemainingTime();
+    roundRobin();
     return 0;
 }
