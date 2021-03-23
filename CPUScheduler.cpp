@@ -504,6 +504,6 @@ void priorityWithPreEmption(){
     pwp.showSchedule();
 }
 int main() {
-    roundRobin();
+    priorityWithPreEmption();
     return 0;
 }
