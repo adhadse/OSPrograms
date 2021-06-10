@@ -49,7 +49,7 @@ class BankersAlgorithm {
             // initializing empty 0 vector for storing total of resources already allocated
             vector<int> totalAllocatedResources(totalResources.size()); 
             for (auto & process: processList) {
-                for (size_t index=0; index<totalAllocatedResources.size(); index++) {
+                for (size_t index=0; index < totalAllocatedResources.size(); index++) {
                     totalAllocatedResources[index] += process.allocatedResources[index];
                 }
             }
