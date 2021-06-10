@@ -54,7 +54,7 @@ class BankersAlgorithm {
                 }
             }
             
-            for (size_t index=0; index<totalAllocatedResources.size(); index++) {
+            for (size_t index=0; index < totalAllocatedResources.size(); index++) {
                 this->remainingResources.push_back(totalResources[index] - totalAllocatedResources[index]);
             }
         }
@@ -84,7 +84,7 @@ class BankersAlgorithm {
     
         void run() {
             findRemainingResources();
-            //setRemainingNeedOfResources();
+         
             while (!processList.empty()) {
                 try{
                     Process process = findNextProcess();
@@ -99,7 +99,7 @@ class BankersAlgorithm {
                 catch (string std) { cout<<std; return;}
             }
 
-            //Check if Total Resources are reaquired
+            //Check if Total Resources are required
             bool flag = true;
             for (size_t index=0; index<remainingResources.size(); index++) {
                 if (totalResources[index] == remainingResources[index]) {
